@@ -1,0 +1,111 @@
+// Path: src/app/api/company/index.ts
+
+import { NextApiRequest, NextApiResponse } from 'next'
+import connectToDatabase from '@/libs/mongodb' // MongoDB connection utility
+import Company from '@/models/Company'
+import { getSession } from 'next-auth/react'
+import User from '@/models/User'
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  await connectToDatabase()
+
+  const session = await getSession({ req })
+  if (!session || !session.user) {
+    return res.status(401).json({ message: 'Unauthorized' })
+  }
+
+  const userId = session.user.id
+
+  switch (req.method) {
+    case 'POST':
+      try {
+        const {
+          company_name,
+          tagline,
+          company_username,
+          company_logo,
+          company_cover_image,
+          year_founded,
+          company_size,
+          company_type,
+          industries,
+          specialties,
+          services,
+          short_description,
+          long_description,
+          inquiry_email,
+          support_email,
+          general_phone_number,
+          secondary_phone_number,
+          fax,
+          address,
+          social_links
+        } = req.body
+
+        // Check if user already has companies where they are admin
+        const adminCompanyCount = await Company.countDocuments({ admins: userId })
+
+        // Create new company with user as admin
+        const newCompany = await Company.create({
+          company_name,
+          tagline,
+          company_username,
+          company_logo,
+          company_cover_image,
+          year_founded,
+          company_size,
+          company_type,
+          industries,
+          specialties,
+          services,
+          short_description,
+          long_description,
+          inquiry_email,
+          support_email,
+          general_phone_number,
+          secondary_phone_number,
+          fax,
+          address,
+          social_links,
+          admins: [userId]
+        })
+
+        // Optionally, update user role if it's their first company
+        // Assuming you have a User model and role management
+
+        if (adminCompanyCount === 0) {
+          await User.findByIdAndUpdate(userId, { role: 'Admin' })
+        }
+
+        res.status(201).json(newCompany)
+      } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: 'Internal Server Error' })
+      }
+      break
+
+    case 'GET':
+      try {
+        // Get all companies the user is associated with
+        const companies = await Company.find({
+          $or: [
+            { admins: userId },
+            { editors: userId },
+            { employers: userId },
+            { followers: userId },
+            { favorites: userId }
+          ]
+        }).populate('industries specialties services admins editors employers followers favorites jobs')
+
+        res.status(200).json(companies)
+      } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: 'Internal Server Error' })
+      }
+      break
+
+    default:
+      res.setHeader('Allow', ['GET', 'POST'])
+      res.status(405).end(`Method ${req.method} Not Allowed`)
+  }
+}

@@ -1,0 +1,20 @@
+// src/models/index.ts
+
+import './Application'
+import './Company'
+import './ContactForm'
+import './Industry'
+import './Job'
+import './JobCategory'
+import './Message'
+import './MessageThread'
+import './Notification'
+import './Order'
+import './ReportedJob'
+import './Service'
+import './Skill'
+import './Specialty'
+import './Subscription'
+import './Ticket'
+import './User'
+// Import other models as needed
